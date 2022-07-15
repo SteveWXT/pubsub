@@ -1,0 +1,53 @@
+package server
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/gorilla/pat"
+	"github.com/jcelliott/lumber"
+)
+
+var (
+	// Router ...
+	Router = pat.New()
+)
+
+// init adds http/https as available mist server types
+func init() {
+	Register("http", StartHTTP)
+}
+
+// StartHTTP starts a mist server listening over HTTP
+func StartHTTP(uri string, errChan chan<- error) {
+	if err := newHTTP(uri); err != nil {
+		errChan <- fmt.Errorf("Unable to start mist http listener - %s", err.Error())
+	}
+}
+
+func newHTTP(address string) error {
+	lumber.Info("HTTP server listening at '%s'...\n", address)
+
+	// blocking...
+	return http.ListenAndServe(address, routes())
+}
+
+// routes registers all api routes with the router
+func routes() *pat.Router {
+	Router.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
+		rw.Write([]byte("pong\n"))
+	})
+	// Router.Get("/list", handleRequest(list))
+	// Router.Get("/subscribe", handleRequest(subscribe))
+	// Router.Get("/unsubscribe", handleRequest(unsubscribe))
+
+	return Router
+}
+
+// handleRequest is a wrapper for the actual route handler, simply to provide some
+// debug output
+func handleRequest(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		fn(rw, req)
+	}
+}
