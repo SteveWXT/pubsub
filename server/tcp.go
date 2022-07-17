@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 
 	"github.com/jcelliott/lumber"
@@ -35,6 +36,34 @@ func StartTCP(uri string, errChan chan<- error) {
 
 			// accept connections
 			conn, err := ln.Accept()
+			if err != nil {
+				errChan <- fmt.Errorf("Failed to accept TCP connection %s", err.Error())
+				return
+			}
+
+			// handle each connection individually (non-blocking)
+			go handleConnection(conn, errChan)
+		}
+	}()
+}
+
+// StartTCPWithLS starts a tcp server listening on the specified tcp listener
+// and then continually reads from the server handling any incoming connections
+func StartTCPWithLS(ls net.Listener, errChan chan<- error) {
+
+	port, err := GetPort(ls)
+	if err != nil {
+		log.Fatal("Error when converting port number: ", err)
+	}
+
+	lumber.Info("TCP server listening at '%v'...", port)
+
+	// start continually listening for any incoming tcp connections (non-blocking)
+	go func() {
+		for {
+
+			// accept connections
+			conn, err := ls.Accept()
 			if err != nil {
 				errChan <- fmt.Errorf("Failed to accept TCP connection %s", err.Error())
 				return
